@@ -1,0 +1,85 @@
+services:
+  db_tp_coord_front_back:
+    container_name: db_tp_coord_front_back
+    restart: unless-stopped
+    image: postgres:latest
+    environment:
+      - ENGINE=postgresql,
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${DB_USERNAME}
+      - POSTGRES_PASSWORD=${DB_PASS}
+      - PGDATA=/var/lib/postgresql/data/pgdata
+    volumes:
+      - ./dockerdata/postgres:/var/lib/postgresql/data
+    ports:
+      - 5440:5432
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - course_tp_coord_front_back
+
+  db_migration_tp_coord_front_back:
+    container_name: db_migration_tp_coord_front_back
+    build: ./backend
+    command: >
+      bash -c "flask db upgrade"
+    env_file:
+      - .env
+    depends_on:
+      db_tp_coord_front_back:
+        condition: service_healthy
+    networks:
+      - course_tp_coord_front_back
+
+  backend_tp_coord_front_back:
+    build: ./backend
+    container_name: backend_tp_coord_front_back
+    restart: unless-stopped
+    env_file: .env
+    command: gunicorn --config gunicorn-cfg.py --reload run:app
+    ports:
+      - 5005:5005
+    volumes:
+      - ./backend/migrations:/code/migrations
+    develop:
+      watch:
+        - action: sync
+          path: ./backend
+          target: /code
+        - action: rebuild
+          path: ./backend/requirements.txt
+        - action: rebuild
+          path: ./.env
+    depends_on:
+      db_migration_tp_coord_front_back:
+        condition: service_completed_successfully
+    networks:
+      - course_tp_coord_front_back
+
+  frontend_tp_coord_front_back:
+    container_name: frontend_tp_coord_front_back
+    restart: unless-stopped
+    build: ./frontend
+    ports:
+      - 3000:3000
+    depends_on:
+      - backend_tp_coord_front_back
+    develop:
+      watch:
+        - action: sync
+          path: ./frontend
+          target: /app
+        - action: rebuild
+          path: ./frontend/src/styles
+        - action: rebuild
+          path: ./frontend/package*.json
+    networks:
+      - course_tp_coord_front_back
+
+networks:
+  course_tp_coord_front_back:
+    name: course_tp_coord_front_back
+    driver: bridge
