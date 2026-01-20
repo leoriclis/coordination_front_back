@@ -85,6 +85,10 @@ psycopg2==2.9.10
     # via -r requirements.in
 pytz==2024.2
     # via flask-restx
+pyjwt==2.10.1
+    # via -r requirements.in
+pytest==8.3.4
+    # via -r requirements.in
 pyyaml==6.0.2
     # via flasgger
 referencing==0.35.1

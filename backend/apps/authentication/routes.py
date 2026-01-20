@@ -4,7 +4,10 @@ Copyright (c) 2019 - present AppSeed.us
 """
 
 from apps.base.models.company import Company
-from flask import render_template, redirect, request, url_for, current_app
+from flask import render_template, redirect, request, url_for, current_app, jsonify
+import os
+from datetime import datetime, timedelta, timezone
+import jwt
 from flask_login import (
     current_user,
     login_user,
@@ -102,6 +105,49 @@ def register():
         companies = Company.query.all()
         create_account_form.company.choices = [('', 'Select a company...')] + [(str(company.id), company.name) for company in companies]
         return render_template('accounts/register.html', form=create_account_form)
+
+
+@blueprint.route('/api/auth/token', methods=['POST'])
+def token():
+    payload = request.get_json(silent=True) or {}
+    username = payload.get('username')
+    password = payload.get('password')
+
+    if not username or not password:
+        return jsonify({'message': 'username and password are required'}), 400
+
+    user = Users.query.filter_by(username=username).first()
+    if not user or not verify_pass(password, user.password):
+        return jsonify({'message': 'invalid credentials'}), 401
+
+    if not user.company_id:
+        return jsonify({'message': 'user must be linked to a company'}), 400
+
+    secret = os.getenv('JWT_SECRET') or current_app.config.get('SECRET_KEY')
+    if not secret:
+        return jsonify({'message': 'JWT secret not configured'}), 500
+
+    expires_minutes = int(os.getenv('JWT_EXPIRES_MINUTES', '60'))
+    now = datetime.now(timezone.utc)
+    exp = now + timedelta(minutes=expires_minutes)
+
+    token = jwt.encode(
+        {
+            'sub': str(user.id),
+            'iat': int(now.timestamp()),
+            'exp': int(exp.timestamp()),
+            'https://hasura.io/jwt/claims': {
+                'x-hasura-default-role': 'user',
+                'x-hasura-allowed-roles': ['user'],
+                'x-hasura-user-id': str(user.id),
+                'x-hasura-company-id': str(user.company_id),
+            },
+        },
+        secret,
+        algorithm='HS256',
+    )
+
+    return jsonify({'access_token': token, 'token_type': 'Bearer', 'expires_at': int(exp.timestamp())})
 
 
 @blueprint.route('/logout')

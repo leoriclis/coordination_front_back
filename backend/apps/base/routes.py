@@ -1,5 +1,6 @@
 # -*- encoding: utf-8 -*-
 from flask import render_template, request, jsonify
+from jinja2 import TemplateNotFound
 from flask_login import (
     current_user,
 )
@@ -39,8 +40,11 @@ def has_permission(model, method):
     # return current_user.is_authenticated
 
 @blueprint.route('/company/', endpoint='company-without-id', methods=['GET'])
+@swag_from('swagger/company_without_id_specs.yml', endpoint='base_blueprint.company-without-id', methods=['GET'])
 @blueprint.route('/company/<int:cmp_id>', endpoint='company-with-id', methods=['GET'])
+@swag_from('swagger/company_with_id_specs.yml', endpoint='base_blueprint.company-with-id', methods=['GET'])
 @blueprint.route('/company/', endpoint='company-create', methods=['POST'])
+@swag_from('swagger/company_create_specs.yml', endpoint='base_blueprint.company-create', methods=['POST'])
 def company(cmp_id=None):
     if not has_permission('Company', request.method):
         return "You need to be authenticated", 401
@@ -92,23 +96,41 @@ def product(product_id=None):
         else:
             return jsonify(data=[i.serialize for i in qs.all()])
     if request.method == 'POST' and request.json:
-        name = request.json.get('name')
-        comment = request.json.get('comment')
-        quantity = request.json.get('quantity')
-        company_id = request.json.get('company_id')
+        payload = request.json
+        required_fields = ['name', 'comment', 'quantity', 'company_id']
+        missing_fields = [
+            field
+            for field in required_fields
+            if field not in payload or payload[field] in (None, '')
+        ]
+        if missing_fields:
+            return jsonify({'message': 'Missing required fields', 'fields': missing_fields}), 400
+
+        name = payload.get('name')
+        comment = payload.get('comment')
+        quantity = payload.get('quantity')
+        company_id = payload.get('company_id')
         product_instance = Product(name=name, comment=comment, quantity=quantity, company_id=company_id)
         db.session.add(product_instance)
         db.session.commit()
         return jsonify(product_instance.serialize)
+    if request.method == 'POST':
+        return jsonify({'message': 'Payload is required'}), 400
 
     if request.method == 'PUT' and request.json:
+        payload = request.json
+        if not payload:
+            return jsonify({'message': 'Payload is required'}), 400
+
         product_instance = Product.query.get_or_404(product_id)
-        product_instance.name = request.json.get('name') if request.json.get('name') else product_instance.name
-        product_instance.comment = request.json.get('comment') if request.json.get('comment') else product_instance.comment
-        product_instance.quantity = request.json.get('quantity') if request.json.get('quantity') else product_instance.quantity
+        product_instance.name = payload.get('name') if payload.get('name') else product_instance.name
+        product_instance.comment = payload.get('comment') if payload.get('comment') else product_instance.comment
+        product_instance.quantity = payload.get('quantity') if payload.get('quantity') is not None else product_instance.quantity
 
         db.session.commit()
         return jsonify(product_instance.serialize)
+    if request.method == 'PUT':
+        return jsonify({'message': 'Payload is required'}), 400
 
     if request.method == 'DELETE' and product_id is not None:
         product_instance = Product.query.get(product_id)
@@ -120,6 +142,10 @@ def product(product_id=None):
             return jsonify({'message': 'Product not found'}), 404
 
 
+def is_api_request():
+    return request.path.startswith('/api/')
+
+
 # Errors
 @login_manager.unauthorized_handler
 def unauthorized_handler():
@@ -128,14 +154,29 @@ def unauthorized_handler():
 
 @blueprint.errorhandler(403)
 def access_forbidden(error):
-    return render_template('home/page-403.html'), 403
+    if is_api_request():
+        return jsonify({'message': 'Forbidden'}), 403
+    try:
+        return render_template('home/page-403.html'), 403
+    except TemplateNotFound:
+        return 'Forbidden', 403
 
 
 @blueprint.errorhandler(404)
 def not_found_error(error):
-    return render_template('home/page-404.html'), 404
+    if is_api_request():
+        return jsonify({'message': 'Not found'}), 404
+    try:
+        return render_template('home/page-404.html'), 404
+    except TemplateNotFound:
+        return 'Not found', 404
 
 
 @blueprint.errorhandler(500)
 def internal_error(error):
-    return render_template('home/page-500.html'), 500
+    if is_api_request():
+        return jsonify({'message': 'Internal server error'}), 500
+    try:
+        return render_template('home/page-500.html'), 500
+    except TemplateNotFound:
+        return 'Internal server error', 500

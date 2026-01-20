@@ -21,6 +21,7 @@ export default function ProductManager() {
     company_id: ''
   });
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Fetch products on initial load
   useEffect(() => {
@@ -31,8 +32,9 @@ export default function ProductManager() {
 
   // Add a new product
   const addProduct = async () => {
+    setError(null);
     if (!newProduct.name || !newProduct.comment || newProduct.quantity === undefined || !newProduct.company_id) {
-      alert('Please fill in all fields.');
+      setError('Please fill in all fields.');
       return;
     }
 
@@ -49,6 +51,7 @@ export default function ProductManager() {
   // Update an existing product
   const updateProduct = async () => {
     if (!editingProduct) return;
+    setError(null);
 
     const res = await fetch(`${productUri}/${editingProduct.id}`, {
       method: 'PUT',
@@ -64,6 +67,7 @@ export default function ProductManager() {
 
   // Delete a product
   const deleteProduct = async (id: number) => {
+    setError(null);
     await fetch(`${productUri}/${id}`, { method: 'DELETE' });
     setProducts((prev) => prev.filter((p) => p.id !== id));
   };
@@ -71,6 +75,7 @@ export default function ProductManager() {
   return (
     <div className="p-4">
       <h1 className="text-xl font-bold mb-4">Product Manager</h1>
+      {error && <p className="text-sm text-red-600 mb-2">{error}</p>}
 
       {/* Add a New Product */}
       <div className="mb-4">
@@ -121,7 +126,7 @@ export default function ProductManager() {
           <li key={product.id} className="mb-2 flex items-center">
             <div className="flex-1">
               <span className="font-bold">{product.name}</span> - {product.comment} (
-              {product.quantity}) from {product.company.name} ({product.company_id})
+              {product.quantity}) from {product.company?.name ?? product.company_id} ({product.company_id})
             </div>
             <button
               onClick={() => setEditingProduct(product)}

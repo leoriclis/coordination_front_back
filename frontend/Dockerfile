@@ -2,7 +2,7 @@
 
 
 # Dockerfile pour le frontend React depuis image node
-FROM node:24-alpine
+FROM node:24-slim
 
 # Définir le répertoire de travail
 WORKDIR /app

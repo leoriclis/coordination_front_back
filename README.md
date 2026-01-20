@@ -30,3 +30,32 @@ Au lancement, le service `db_migration_tp_coord_front_back` s'occupera d'appliqu
 Après le lancement, accèdez au backend flask à l'URL suivante pour vous créer un compte http://localhost:5005/register. Vous pourrez ensuite aller sur http://localhost:5005/login pour vous connecter.
 L'API swagger est disponible à l'URL suivante :  
 http://localhost:5005/apidocs
+
+## Hasura (GraphQL)
+Un service Hasura est ajoute via `docker-compose.yaml` et expose GraphQL sur `http://localhost:8080/v1/graphql`.
+
+1. Completez le fichier `.env` avec :
+   - `HASURA_GRAPHQL_ADMIN_SECRET`
+   - `HASURA_GRAPHQL_JWT_SECRET`
+   - `JWT_SECRET` (partage avec le backend)
+2. Demarrez la stack : `docker compose watch`
+3. Ouvrez la console Hasura : http://localhost:8080
+4. Appliquez les metadonnees (permissions) :
+   - Avec le CLI : `hasura metadata apply --endpoint http://localhost:8080 --admin-secret <secret>`
+   - Ou manuellement via la console (cf. `hasura/README.md`)
+
+## JWT pour Hasura
+Un endpoint JSON permet de recuperer un JWT avec les claims Hasura :
+`POST http://localhost:5005/api/auth/token` avec `{ "username": "...", "password": "..." }`.
+
+Les claims incluent `x-hasura-company-id`, utilise pour filtrer Company et Product.
+
+## Typage GraphQL (frontend)
+Les requetes GraphQL sont dans `frontend/src/graphql/**/*.graphql` et le typage est genere par :
+
+```bash
+cd frontend
+set HASURA_GRAPHQL_URL=http://localhost:8080/v1/graphql
+set HASURA_GRAPHQL_ADMIN_SECRET=<secret>
+npm run codegen
+```

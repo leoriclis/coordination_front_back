@@ -1,0 +1,22 @@
+query Companies {
+  company(order_by: { id: asc }) {
+    id
+    name
+    created_at
+    updated_at
+  }
+}
+
+query Products {
+  product(order_by: { id: asc }) {
+    id
+    name
+    comment
+    quantity
+    company_id
+    company {
+      id
+      name
+    }
+  }
+}

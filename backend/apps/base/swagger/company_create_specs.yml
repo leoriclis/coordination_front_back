@@ -1,0 +1,36 @@
+Create Company endpoint
+---
+tags:
+  - Companies
+consumes:
+  - application/x-www-form-urlencoded
+produces:
+  - application/json
+parameters:
+  - in: formData
+    name: name
+    type: string
+    required: true
+    description: Company name
+definitions:
+  Company:
+    type: object
+    properties:
+      id:
+        type: integer
+      name:
+        type: string
+      created_at:
+        type: string
+        format: date-time
+      updated_at:
+        type: string
+        format: date-time
+        description: Nullable when not updated
+responses:
+  200:
+    description: A company matching the created payload
+    schema:
+      $ref: '#/definitions/Company'
+    examples:
+      {"id": 1234, "name": "Acme", "created_at": "01 Jan 2026 - 12:00:00", "updated_at": null}

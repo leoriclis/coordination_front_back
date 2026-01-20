@@ -1,0 +1,13 @@
+subscription ProductsLive {
+  product(order_by: { id: asc }) {
+    id
+    name
+    comment
+    quantity
+    company_id
+    company {
+      id
+      name
+    }
+  }
+}

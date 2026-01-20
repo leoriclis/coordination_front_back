@@ -59,6 +59,25 @@ services:
     networks:
       - course_tp_coord_front_back
 
+  hasura_tp_coord_front_back:
+    container_name: hasura_tp_coord_front_back
+    image: hasura/graphql-engine:v2.44.0
+    restart: unless-stopped
+    ports:
+      - 8080:8080
+    environment:
+      - HASURA_GRAPHQL_DATABASE_URL=postgresql://${DB_USERNAME}:${DB_PASS}@db_tp_coord_front_back:5432/${DB_NAME}
+      - HASURA_GRAPHQL_ENABLE_CONSOLE=true
+      - HASURA_GRAPHQL_DEV_MODE=true
+      - HASURA_GRAPHQL_ADMIN_SECRET=${HASURA_GRAPHQL_ADMIN_SECRET}
+      - HASURA_GRAPHQL_JWT_SECRET=${HASURA_GRAPHQL_JWT_SECRET}
+      - HASURA_GRAPHQL_UNAUTHORIZED_ROLE=anonymous
+    depends_on:
+      db_tp_coord_front_back:
+        condition: service_healthy
+    networks:
+      - course_tp_coord_front_back
+
   frontend_tp_coord_front_back:
     container_name: frontend_tp_coord_front_back
     restart: unless-stopped
