@@ -30,6 +30,8 @@ jobs:
         run: |
           cd backend
           pytest
+        env:
+          PYTHONPATH: ${{ github.workspace }}/backend
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
